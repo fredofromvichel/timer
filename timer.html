@@ -1,0 +1,1077 @@
+
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Countdown Timer</title>
+<!--
+  Countdown Timer – Extended Version
+  Copyright (c) 2026 Frederic Krone
+
+  MIT License (Attribution required)
+
+  Hiermit wird jedem kostenlos die Erlaubnis erteilt, dieses Skript 
+  zu verwenden, zu kopieren, zu verändern und weiterzugeben – auch 
+  kommerziell –, unter der Bedingung, dass folgende Hinweise enthalten bleiben:
+
+  - Diese Copyright-Notiz
+  - Der Name des ursprünglichen Autors: "Frederic Krone"
+
+  Das Skript wird ohne Gewährleistung bereitgestellt – ohne Anspruch
+  auf Funktion, Eignung oder Fehlerfreiheit.
+-->
+  <style>
+    :root{
+      --bg: #111827;
+      --fg: #ffffff;
+
+      --font: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      --size: 96px; /* wird via Preset gesetzt */
+
+      --muted: rgba(255,255,255,0.75);
+      --btn-bg: rgba(255,255,255,0.10);
+      --btn-bg-hover: rgba(255,255,255,0.16);
+
+      /* Alarm-Kontrast */
+      --bg-contrast: #ffffff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body{
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font);
+    }
+
+    /* Alarm blink: 1x kurz Farben tauschen (Vordergrund <-> Hintergrund) */
+    body.alarm{
+      animation: alarmBlink 450ms ease-in-out 1;
+    }
+    @keyframes alarmBlink{
+      0% { background: var(--bg); color: var(--fg); }
+      45% { background: var(--fg); color: var(--bg); }
+      55% { background: var(--fg); color: var(--bg); }
+      100% { background: var(--bg); color: var(--fg); }
+    }
+
+    .app{
+      width: min(1000px, 94vw);
+      display: grid;
+      gap: 18px;
+      padding: 18px 0;
+    }
+
+    /* Kein Rahmen, keine Box */
+    .topRow{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      user-select: none;
+    }
+
+    .title{
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .status{
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .timer{
+      text-align: center;
+      font-size: var(--size);
+      line-height: 1.02;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      padding: 10px 0 0;
+      user-select: none;
+    }
+
+    .sub{
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 6px;
+      user-select: none;
+    }
+
+    .controls{
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 10px;
+    }
+
+	body.running .topRow,
+	body.running .sub,
+	body.running .controls,
+	body.running .settingsWrap {
+	  opacity: 0.3;
+	  transition: opacity 150ms ease;
+	}
+
+	body.running .timer {
+	  opacity: 1;
+	}
+
+    button{
+      appearance: none;
+      border: none; /* keine Rahmen */
+      background: var(--btn-bg);
+      color: var(--fg);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight: 650;
+      cursor: pointer;
+      transition: background 140ms ease, transform 80ms ease;
+    }
+    button:hover{ background: var(--btn-bg-hover); }
+    button:active{ transform: translateY(1px); }
+    button[disabled]{ opacity: 0.4; cursor: not-allowed; }
+
+    /* Settings: minimal, ohne Boxen */
+    .settingsWrap{
+      display: grid;
+      gap: 10px;
+      justify-items: center;
+    }
+
+    .settingsHeader{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      user-select: none;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .settingsPanel{
+      width: min(900px, 94vw);
+      display: grid;
+      gap: 12px;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 220ms ease;
+    }
+    .settingsWrap[data-open="true"] .settingsPanel{
+      max-height: 900px;
+    }
+
+    .grid{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px 16px;
+      align-items: end;
+    }
+
+    .field{
+      display: grid;
+      gap: 6px;
+      align-content: start;
+    }
+
+    label{
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+	input[type="checkbox"] {
+	  width: auto;
+	  padding: 0;
+	  border-radius: 0;
+	  background: transparent;
+	}
+	
+    input, select{
+      width: 100%;
+      padding: 10px 10px;
+      border-radius: 12px;
+      border: none; /* keine Rahmen */
+      background: rgba(0,0,0,0.18);
+      color: var(--fg);
+      outline: none;
+    }
+
+    input[type="color"]{
+      padding: 6px;
+      height: 42px;
+    }
+
+    .hint{
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .presetRow{
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+    .presetRow button{
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+
+    @media (max-width: 640px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      * { transition: none !important; }
+      body.alarm{ animation: none !important; }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app" aria-label="Countdown Timer">
+    <div class="topRow">
+      <div class="title"></div>
+      <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+        <div class="status" id="statusText">Bereit</div>
+        <button id="fsBtn" title="Vollbild umschalten (F)">Vollbild</button>
+      </div>
+    </div>
+
+    <div class="timer" id="timerDisplay" aria-live="polite">5:00</div>
+    <div class="sub" id="subText"></div>
+
+    <div class="controls">
+      <button id="startBtn">Start</button>
+      <button id="stopBtn" disabled>Stop</button>
+      <button id="resetBtn">Reset</button>
+    </div>
+
+    <section class="settingsWrap" id="settingsWrap" data-open="false">
+      <div class="settingsHeader">
+        <span></span>
+        <button id="toggleSettingsBtn" aria-expanded="false" aria-controls="settingsPanel">Einstellungen</button> 
+		<button id="copyLinkBtn" title="Aktuelle Einstellungen als Link kopieren">Link</button>
+		<button id="toggleVisibilityBtn" title="Timer ein-/ausblenden (B)">Unsichtbar</button>
+      </div>
+
+      <div class="settingsPanel" id="settingsPanel">
+        <div class="grid">
+          <div class="field">
+            <label for="minutesInput">Countdown (Minuten)</label>
+            <input id="minutesInput" type="number" min="1" max="999" value="5" />
+            <div class="presetRow" aria-label="Presets">
+              <button type="button" class="presetBtn" data-min="5">5 Min</button>
+              <button type="button" class="presetBtn" data-min="10">10 Min</button>
+              <button type="button" class="presetBtn" data-min="15">15 Min</button>
+            </div>
+            <div class="hint">Änderungen wirken, wenn der Timer nicht läuft.</div>
+          </div>
+
+          <div class="field">
+            <label for="sizePreset">Schriftgröße (Preset)</label>
+            <select id="sizePreset">
+              <option value="small">Klein</option>
+              <option value="medium" selected>Mittel</option>
+              <option value="large">Groß (fast fullscreen)</option>
+            </select>
+            <div class="hint">„Groß“ nutzt viewport-basierte Größe und füllt fast den ganzen Screen.</div>
+          </div>
+
+          <div class="field">
+            <label for="leadingZeroToggle">Führende Null bei Minuten</label>
+            <select id="leadingZeroToggle">
+              <option value="off" selected>Aus (z. B. 5:07)</option>
+              <option value="on">An (z. B. 05:07)</option>
+            </select>
+            <div class="hint">Sekunden bleiben immer zweistellig.</div>
+          </div>
+
+          <div class="field">
+            <label for="roundToggle">Runden auf ganze Minuten</label>
+            <select id="roundToggle">
+              <option value="off" selected>Aus</option>
+              <option value="ceil">An (auf ganze Minuten aufrunden)</option>
+            </select>
+            <div class="hint">Wirkt beim Pausieren und vor dem (Weiter-)Start.</div>
+          </div>
+
+          <div class="field">
+            <label for="fontSelect">Schriftart</label>
+            <select id="fontSelect">
+              <option value="system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif" selected>System (Standard)</option>
+              <option value="Segoe UI, system-ui, sans-serif">Segoe UI</option>
+              <option value="Inter, system-ui, sans-serif">Inter (falls installiert)</option>
+              <option value="Arial, sans-serif">Arial</option>
+              <option value="Georgia, serif">Georgia</option>
+              <option value="'Courier New', monospace">Courier New</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="textColorInput">Schriftfarbe</label>
+            <input id="textColorInput" type="color" value="#ffffff" />
+          </div>
+
+          <div class="field">
+            <label for="bgColorInput">Hintergrundfarbe</label>
+            <input id="bgColorInput" type="color" value="#111827" />
+          </div>
+
+          <div class="field">
+            <label for="soundToggle">Signal bei 0:00</label>
+            <select id="soundToggle">
+              <option value="on" selected>An</option>
+              <option value="off">Aus</option>
+            </select>
+          </div>
+		  <div class="field">
+		    <label>
+		  	<input id="allowNegativeCheckbox" type="checkbox" />
+		  	Timer nach 0:00 weiterlaufen lassen
+		    </label>
+		    <div class="hint">
+		  	Wenn aktiviert, läuft der Timer unter 0:00 weiter (z. B. -0:12).
+		    </div>
+		  </div>
+          <div class="field">
+            <label>Shortcuts</label>
+            <div class="hint">Space: Start/Stop · R: Reset · F: Vollbild · Esc: Einstellungen verbergen</div>
+          </div>
+
+          <div class="field" style="grid-column: 1 / -1;">
+            <!--<label>URL-Parameter</label>
+            <div class="hint">
+              min=5 · size=small|medium|large · lz=0|1 · round=off|ceil · sound=0|1 · fg=%23fff... · bg=%23000... · font=system|segoe|inter|arial|georgia|courier · settings=0|1 · autostart=0|1
+            </div>-->
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // --- DOM ---
+    const timerDisplay = document.getElementById("timerDisplay");
+    const subText = document.getElementById("subText");
+    const statusText = document.getElementById("statusText");
+
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn  = document.getElementById("stopBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const fsBtn = document.getElementById("fsBtn");
+
+    const minutesInput        = document.getElementById("minutesInput");
+    const sizePreset          = document.getElementById("sizePreset");
+    const leadingZeroToggle   = document.getElementById("leadingZeroToggle");
+    const roundToggle         = document.getElementById("roundToggle");
+    const fontSelect          = document.getElementById("fontSelect");
+    const textColorInput      = document.getElementById("textColorInput");
+    const bgColorInput        = document.getElementById("bgColorInput");
+    const soundToggle         = document.getElementById("soundToggle");
+
+    const settingsWrap = document.getElementById("settingsWrap");
+    const toggleSettingsBtn = document.getElementById("toggleSettingsBtn");
+    const copyLinkBtn = document.getElementById("copyLinkBtn");
+	const toggleVisibilityBtn = document.getElementById("toggleVisibilityBtn");
+	const allowNegativeCheckbox = document.getElementById("allowNegativeCheckbox");
+    const presetBtns = Array.from(document.querySelectorAll(".presetBtn"));
+	// --- Konfiguration & Debug ---
+	const DEBUG = false;               // Bei Bedarf auf true setzen für Debug-Ausgaben
+
+	// Schrittweite und Grenzen für die Timer-Skalierung
+	const TIMER_SCALE_STEP = 0.1;      // Skalierung pro Tastendruck (+/-)
+	const TIMER_SCALE_MIN = 0.5;       // Minimaler Skalierungsfaktor
+	const TIMER_SCALE_MAX = 2.0;       // Maximaler Skalierungsfaktor
+
+	// Aktueller Skalierungsfaktor des Timers
+	let timerScale = 1.0;
+
+	// Kleine Helper-Funktion für optionale Debug-Logs
+	function logDebug(...args) {
+	  if (DEBUG) {
+		console.log('[TIMER DEBUG]', ...args);
+	  }
+	}
+    // --- State ---
+    let running = false;
+    let remainingMs = 5 * 60 * 1000;
+    let endAt = null;
+    let rafId = null;
+    let finished = false;
+    let alarmTimeout = null;
+
+    // Letzte 3 Sekunden: pro Sekunde nur einmal triggern
+    let lastBlinkSecond = null;
+	let allowNegative = false;
+	// Merkt sich, ob der Timer „unsichtbar“ geschaltet ist
+	let timerHidden = false;
+	// Merkt sich die zuletzt sichtbare Schriftfarbe, um beim Re-Toggle wiederherstellen zu können
+	let lastVisibleTextColor = "#ffffff"; // wird gleich beim Init überschrieben
+
+    // --- Helpers ---
+    function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+
+    function normalizeHex(v){
+      if (!v) return null;
+      v = String(v).trim();
+      if (v.startsWith('%23')) v = decodeURIComponent(v);
+      if (!v.startsWith('#')) v = '#' + v;
+      return /^#[0-9a-fA-F]{6}$/.test(v) ? v : null;
+    }
+
+	// Formatiert die Restzeit, bei Bedarf mit Minuszeichen (wenn negativ erlaubt)
+	function formatTime(ms){
+	  let isNegative = false;
+
+	  // Wenn negative Zeiten erlaubt sind und ms < 0, merken wir uns das
+	  if (allowNegative && ms < 0) {
+		isNegative = true;
+		ms = Math.abs(ms); // fürs Formatieren verwenden wir den Absolutwert
+	  }
+
+	  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+	  const m = Math.floor(totalSeconds / 60);
+	  const s = totalSeconds % 60;
+
+	  const secStr = String(s).padStart(2,"0");
+	  const minStr = (leadingZeroToggle.value === "on")
+		? String(m).padStart(2,"0")
+		: String(m);
+
+	  const timeStr = `${minStr}:${secStr}`;
+	  return isNegative ? `-${timeStr}` : timeStr;
+	}
+
+    function setStatus(text){
+      statusText.textContent = text;
+    }
+
+    function updateDisplay(){
+      timerDisplay.textContent = formatTime(remainingMs);
+    }
+
+    function hexToRgb(hex){
+      const h = hex.replace("#", "").trim();
+      if (h.length !== 6) return {r: 17, g: 24, b: 39};
+      const n = parseInt(h, 16);
+      return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+    }
+
+    function luminance({r,g,b}){
+      const srgb = [r,g,b].map(v => {
+        const c = v / 255;
+        return (c <= 0.03928) ? (c/12.92) : Math.pow((c + 0.055)/1.055, 2.4);
+      });
+      return 0.2126*srgb[0] + 0.7152*srgb[1] + 0.0722*srgb[2];
+    }
+
+    function computeContrastColor(bgHex){
+      const lum = luminance(hexToRgb(bgHex));
+      return lum > 0.5 ? "#000000" : "#ffffff";
+    }
+
+    function applySizePreset(){
+      const root = document.documentElement;
+      // Deine Werte aus der hochgeladenen Datei
+      if (sizePreset.value === "small") {
+        root.style.setProperty("--size", "192px");
+      } else if (sizePreset.value === "medium") {
+        root.style.setProperty("--size", "clamp(110px, 22vw, 460px)");
+      } else {
+        root.style.setProperty("--size", "clamp(120px, 32vw, 900px)");
+      }
+    }
+
+	// Schaltet den Timer zwischen sichtbar/unsichtbar um
+	function toggleTimerVisibility() {
+	  try {
+		// Aktuelle Farben aus den Inputs lesen
+		const currentTextColor = textColorInput.value;
+		const currentBgColor = bgColorInput.value;
+
+		if (!timerHidden) {
+		  // Übergang: sichtbar -> unsichtbar
+		  // Merke dir die derzeit sichtbare Schriftfarbe, um sie später wiederherzustellen
+		  lastVisibleTextColor = currentTextColor;
+
+		  // Schriftfarbe auf Hintergrundfarbe setzen -> Timer wird "unsichtbar"
+		  textColorInput.value = currentBgColor;
+		  document.documentElement.style.setProperty("--fg", currentBgColor);
+
+		  timerHidden = true;
+		} else {
+		  // Übergang: unsichtbar -> sichtbar
+		  // Falls aus irgendeinem Grund kein Wert gemerkt wurde, setze einen Fallback
+		  const restoreColor = lastVisibleTextColor || "#ffffff";
+
+		  textColorInput.value = restoreColor;
+		  document.documentElement.style.setProperty("--fg", restoreColor);
+
+		  timerHidden = false;
+		}
+
+		// Hintergrund/Contrast bleiben über applyTheme konsistent
+		document.documentElement.style.setProperty("--bg", currentBgColor);
+		document.documentElement.style.setProperty(
+		  "--bg-contrast",
+		  computeContrastColor(currentBgColor)
+		);
+
+		updateVisibilityButtonLabel();
+		syncUrl(); // URL-Parameter (fg/bg) aktuell halten
+	  } catch (e) {
+		console.error("Fehler beim Umschalten der Timer-Sichtbarkeit:", e);
+	  }
+	}
+
+	function applyTheme(){
+	  const fg = textColorInput.value;
+	  const bg = bgColorInput.value;
+
+	  document.documentElement.style.setProperty("--font", fontSelect.value);
+	  document.documentElement.style.setProperty("--fg", fg);
+	  document.documentElement.style.setProperty("--bg", bg);
+	  document.documentElement.style.setProperty("--bg-contrast", computeContrastColor(bg));
+
+	  // Wenn der Timer sichtbar ist, aktualisieren wir den "Last Visible"-Wert
+	  if (!timerHidden) {
+		lastVisibleTextColor = fg;
+	  }
+	}
+
+	// Wendet den aktuellen Skalierungsfaktor auf die Timer-Anzeige an
+	function applyTimerScale() {
+	  try {
+		// Skalierung clampen, damit wir in definierten Grenzen bleiben
+		const clamped = Math.max(TIMER_SCALE_MIN, Math.min(TIMER_SCALE_MAX, timerScale));
+
+		if (clamped !== timerScale) {
+		  timerScale = clamped;
+		}
+
+		// Skaliere nur die Timer-Anzeige per CSS-Transform
+		timerDisplay.style.transformOrigin = 'center center';
+		timerDisplay.style.transform = `scale(${timerScale})`;
+
+		logDebug('Timer scale applied:', timerScale);
+	  } catch (e) {
+		console.error('Fehler beim Anwenden der Timer-Skalierung:', e);
+	  }
+	}
+
+    function setRemainingFromMinutes(mins){
+      const m = clamp(parseInt(mins ?? minutesInput.value ?? "1", 10), 1, 999);
+      minutesInput.value = String(m);
+      remainingMs = m * 60 * 1000;
+      finished = false;
+      lastBlinkSecond = null;
+      updateDisplay();
+      subText.textContent = "Stelle Minuten ein, dann Start.";
+      setStatus("Bereit");
+    }
+
+    function roundToWholeMinuteCeil(ms){
+      const minute = 60 * 1000;
+      if (ms <= 0) return 0;
+      return Math.ceil(ms / minute) * minute;
+    }
+
+	function maybeRoundRemaining(){
+	  if (roundToggle.value === "ceil"){
+		// Wenn negative Zeiten erlaubt sind und wir bei <= 0 ms sind,
+		// keine Rundung auf ganze Minuten mehr durchführen, um die Überziehung sichtbar zu lassen.
+		if (allowNegative && remainingMs <= 0) {
+		  return;
+		}
+		remainingMs = roundToWholeMinuteCeil(remainingMs);
+	  }
+	}
+
+    function beep(){
+      if (soundToggle.value !== "on") return;
+      try{
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "sine";
+        o.frequency.value = 880;
+        g.gain.value = 0.08;
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.start();
+        setTimeout(() => { o.stop(); ctx.close(); }, 220);
+      }catch(e){}
+    }
+	
+	// Einstellungen-Panel programmgesteuert schließen
+	function closeSettingsPanel() {
+	  settingsWrap.setAttribute("data-open", "false");
+	  toggleSettingsBtn.textContent = "Einstellungen";
+	  toggleSettingsBtn.setAttribute("aria-expanded", "false");
+	  // URL anpassen, damit der Zustand auch im Link konsistent ist
+	  syncUrl();
+	}
+
+    function triggerAlarmBlink(){
+      document.body.classList.remove("alarm");
+      void document.body.offsetWidth; // restart animation
+      document.body.classList.add("alarm");
+
+      if (alarmTimeout) clearTimeout(alarmTimeout);
+      alarmTimeout = setTimeout(() => document.body.classList.remove("alarm"), 500);
+    }
+
+    // ---------------------------
+    // URL Parameter Handling
+    // ---------------------------
+    function applyFromUrl(){
+      const p = new URLSearchParams(window.location.search);
+
+      // minutes
+      if (p.has('min')) {
+        const m = clamp(parseInt(p.get('min'), 10), 1, 999);
+        if (!Number.isNaN(m)) minutesInput.value = String(m);
+      }
+
+      // size
+      if (p.has('size')) {
+        const v = String(p.get('size') || '').toLowerCase();
+        if (['small','medium','large'].includes(v)) sizePreset.value = v;
+      }
+
+      // leading zero
+      if (p.has('lz')) {
+        leadingZeroToggle.value = (String(p.get('lz')) === '1') ? 'on' : 'off';
+      }
+
+      // rounding
+      if (p.has('round')) {
+        const r = String(p.get('round') || '').toLowerCase();
+        if (['off','ceil'].includes(r)) roundToggle.value = r;
+      }
+
+      // sound
+      if (p.has('sound')) {
+        soundToggle.value = (String(p.get('sound')) === '1') ? 'on' : 'off';
+      }
+  
+	  // negative Zeit erlauben (neg=0|1)
+	  if (p.has('neg')) {
+	    allowNegative = String(p.get('neg')) === '1';
+	  } else {
+	    allowNegative = false;
+	  }
+	  allowNegativeCheckbox.checked = allowNegative;
+
+      // colors
+      if (p.has('fg')) {
+        const fg = normalizeHex(p.get('fg'));
+        if (fg) textColorInput.value = fg;
+      }
+      if (p.has('bg')) {
+        const bg = normalizeHex(p.get('bg'));
+        if (bg) bgColorInput.value = bg;
+      }
+
+      // font: allow aliases or exact option value
+      if (p.has('font')) {
+        const fRaw = decodeURIComponent(String(p.get('font') || '')).trim();
+        const alias = fRaw.toLowerCase();
+        const aliasMap = {
+          'system': "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+          'segoe': "Segoe UI, system-ui, sans-serif",
+          'inter': "Inter, system-ui, sans-serif",
+          'arial': "Arial, sans-serif",
+          'georgia': "Georgia, serif",
+          'courier': "'Courier New', monospace"
+        };
+        const fontValue = aliasMap[alias] || fRaw;
+        const exists = Array.from(fontSelect.options).some(o => o.value === fontValue);
+        if (exists) fontSelect.value = fontValue;
+      }
+
+      // settings panel
+      if (p.has('settings')) {
+        const open = String(p.get('settings')) === '1';
+        settingsWrap.setAttribute('data-open', String(open));
+        toggleSettingsBtn.textContent = open ? 'Verbergen' : 'Anzeigen';
+        toggleSettingsBtn.setAttribute('aria-expanded', String(open));
+      }
+
+      // apply to UI
+      applyTheme();
+      applySizePreset();
+      setRemainingFromMinutes();
+      updateDisplay();
+	  
+	  // Nach Theme-Anwendung: initial letzten sichtbaren Text-Farbwert setzen
+	  lastVisibleTextColor = textColorInput.value;
+	  
+	  // Button-Label an den aktuellen Hidden-State anpassen
+	  updateVisibilityButtonLabel();
+
+      // autostart
+      if (p.has('autostart') && String(p.get('autostart')) === '1') {
+        // Start after paint; audio may be blocked until user gesture.
+        setTimeout(() => start(), 50);
+      }
+    }
+
+    function syncUrl(){
+      // Keep URL always shareable with current settings.
+      const p = new URLSearchParams();
+
+      p.set('min', String(clamp(parseInt(minutesInput.value || '5', 10), 1, 999)));
+      p.set('size', sizePreset.value);
+      p.set('lz', leadingZeroToggle.value === 'on' ? '1' : '0');
+      p.set('round', roundToggle.value);
+      p.set('sound', soundToggle.value === 'on' ? '1' : '0');
+	  p.set('neg', allowNegative ? '1' : '0');
+      // colors (encode #)
+      p.set('fg', encodeURIComponent(textColorInput.value));
+      p.set('bg', encodeURIComponent(bgColorInput.value));
+
+      // font as alias if possible for nicer URLs
+      const fontAliasMap = new Map([
+        ["system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif", 'system'],
+        ["Segoe UI, system-ui, sans-serif", 'segoe'],
+        ["Inter, system-ui, sans-serif", 'inter'],
+        ["Arial, sans-serif", 'arial'],
+        ["Georgia, serif", 'georgia'],
+        ["'Courier New', monospace", 'courier'],
+      ]);
+      const alias = fontAliasMap.get(fontSelect.value) || fontSelect.value;
+      p.set('font', encodeURIComponent(alias));
+
+      const open = settingsWrap.getAttribute('data-open') === 'true';
+      p.set('settings', open ? '1' : '0');
+
+      const newUrl = `${location.pathname}?${p.toString()}`;
+      history.replaceState(null, '', newUrl);
+    }
+
+    async function copyLink(){
+      syncUrl();
+      const url = location.href;
+      try{
+        await navigator.clipboard.writeText(url);
+        setStatus('Link kopiert');
+        setTimeout(() => setStatus(running ? 'Läuft' : 'Bereit'), 900);
+      }catch(e){
+        prompt('Link kopieren:', url);
+      }
+    }
+
+	function tick(){
+	  if (!running) return;
+
+	  const now = Date.now();
+	  const delta = endAt - now;
+
+	  // Restzeit berechnen: je nach Einstellung mit/ohne negative Werte
+	  if (allowNegative) {
+		// Negative Werte zulassen (Timer läuft unter 0:00 weiter)
+		remainingMs = delta;
+	  } else {
+		// Wie bisher: nicht unter 0 fallen lassen
+		remainingMs = Math.max(0, delta);
+	  }
+
+	  // Anzeige aktualisieren (inkl. evtl. Minuszeichen)
+	  updateDisplay();
+
+	  // Letzte 3 Sekunden: bei 3, 2, 1 einmal blinken lassen (nur im positiven Bereich sinnvoll)
+	  const secondsLeftPositive = Math.ceil(Math.max(0, delta) / 1000); // nur aus positiver Sicht
+	  if (secondsLeftPositive > 0 && secondsLeftPositive <= 3 && secondsLeftPositive !== lastBlinkSecond) {
+		triggerAlarmBlink();
+		lastBlinkSecond = secondsLeftPositive;
+	  }
+
+	  // Fall 1: Negative Zeiten NICHT erlaubt -> altes "Fertig"-Verhalten beibehalten
+	  if (!allowNegative && remainingMs <= 0){
+		running = false;
+		endAt = null;
+		if (rafId) cancelAnimationFrame(rafId);
+		rafId = null;
+		stopBtn.disabled = true;
+		startBtn.disabled = false;
+		document.body.classList.remove("running");
+
+		if (!finished){
+		  finished = true;
+		  setStatus("Fertig");
+		  subText.textContent = "Countdown beendet.";
+		  beep();
+		  triggerAlarmBlink();
+		}
+		return;
+	  }
+
+	  // Fall 2: Negative Zeiten erlaubt -> nur einmal Alarm bei 0:00 auslösen, aber weiterlaufen
+	  if (allowNegative && remainingMs <= 0 && !finished){
+		// Wir sind das erste Mal bei oder unter 0 angekommen
+		finished = true;
+		// Status/Subtext bleiben wie von dir gewünscht unverändert ("Läuft", "Timer läuft…")
+		beep();
+		triggerAlarmBlink();
+		// KEIN return -> wir laufen weiter ins Negative
+	  }
+
+	  // Nächsten Frame anfordern
+	  rafId = requestAnimationFrame(tick);
+	}
+
+    // --- Actions ---
+    function start(){
+      if (running) return;
+
+      if (remainingMs <= 0){
+        setRemainingFromMinutes();
+      }
+
+      maybeRoundRemaining();
+      updateDisplay();
+
+      running = true;
+      finished = false;
+      endAt = Date.now() + remainingMs;
+
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+
+      setStatus("Läuft");
+      subText.textContent = "Timer läuft…";
+
+      lastBlinkSecond = null;
+      rafId = requestAnimationFrame(tick);
+	  
+	  try {
+		document.body.classList.add("running");   // Dimm-Klasse setzen
+		closeSettingsPanel();                     // Einstellungen schließen
+	  } catch (e) {
+		// Optionales Debugging
+		console.error("Fehler beim Aktivieren des Running-States:", e);
+	  }
+    }
+
+	function stop(){
+	  if (!running) return;
+
+	  running = false;
+
+	  const now = Date.now();
+	  const delta = endAt - now;
+
+	  // Restzeit beim Stop: je nach Einstellung mit/ohne negative Werte
+	  remainingMs = allowNegative ? delta : Math.max(0, delta);
+
+	  endAt = null;
+	  maybeRoundRemaining();
+
+	  startBtn.disabled = false;
+	  stopBtn.disabled = true;
+
+	  setStatus("Pausiert");
+	  subText.textContent = "Timer pausiert.";
+
+	  if (rafId) cancelAnimationFrame(rafId);
+	  rafId = null;
+	  lastBlinkSecond = null;
+
+	  updateDisplay();
+
+	  // <<< WICHTIG: UI wieder sichtbar machen >>>
+	  document.body.classList.remove("running");
+	}
+
+    function reset(){
+      running = false;
+      endAt = null;
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = null;
+
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+
+      lastBlinkSecond = null;
+      setRemainingFromMinutes();
+      setStatus("Bereit");
+	 
+	  // >>> NEU: Dimm-Zustand sicherheitshalber aufheben <<<
+	  try {
+		document.body.classList.remove("running");
+	  } catch (e) {
+		console.error("Fehler beim Deaktivieren des Running-States (Reset):", e);
+	  }
+    }
+
+    // --- Settings toggle ---
+    function toggleSettings(){
+      const isOpen = settingsWrap.getAttribute("data-open") === "true";
+      settingsWrap.setAttribute("data-open", String(!isOpen));
+      toggleSettingsBtn.textContent = !isOpen ? "Verbergen" : "Einstellungen";
+      toggleSettingsBtn.setAttribute("aria-expanded", String(!isOpen));
+      syncUrl();
+    }
+
+    // --- Fullscreen ---
+    async function toggleFullscreen(){
+      try{
+        if (!document.fullscreenElement){
+          await document.documentElement.requestFullscreen();
+        } else {
+          await document.exitFullscreen();
+        }
+      }catch(e){}
+      syncFsButton();
+    }
+	
+	// Aktualisiert die Beschriftung des Unsichtbar-Buttons je nach Zustand
+	function updateVisibilityButtonLabel() {
+	  try {
+		// Wenn Timer sichtbar → Button bietet "Unsichtbar" an
+		// Wenn Timer unsichtbar → Button bietet "Sichtbar" an
+		toggleVisibilityBtn.textContent = timerHidden ? "Sichtbar" : "Unsichtbar";
+	  } catch (e) {
+		console.error("Fehler beim Aktualisieren des Visibility-Button-Labels:", e);
+	  }
+	}
+
+    function syncFsButton(){
+      const isFs = !!document.fullscreenElement;
+      fsBtn.textContent = isFs ? "Fenster" : "Vollbild";
+      fsBtn.title = isFs ? "Vollbild verlassen (F)" : "Vollbild umschalten (F)";
+    }
+
+    document.addEventListener("fullscreenchange", syncFsButton);
+
+    // --- Events ---
+    startBtn.addEventListener("click", start);
+    stopBtn.addEventListener("click", stop);
+    resetBtn.addEventListener("click", reset);
+
+    fsBtn.addEventListener("click", toggleFullscreen);
+    toggleSettingsBtn.addEventListener("click", toggleSettings);
+    copyLinkBtn.addEventListener("click", copyLink);
+	toggleVisibilityBtn.addEventListener("click", toggleTimerVisibility); // NEU
+
+    // Theme / typography
+    [fontSelect, textColorInput, bgColorInput].forEach(el => {
+      el.addEventListener("input", () => { applyTheme(); syncUrl(); });
+    });
+
+    // Size preset changes
+    sizePreset.addEventListener("change", () => { applySizePreset(); syncUrl(); });
+
+    // Leading zero affects formatting instantly
+    leadingZeroToggle.addEventListener("change", () => { updateDisplay(); syncUrl(); });
+
+    // Round toggle sync
+    roundToggle.addEventListener("change", () => { syncUrl(); });
+
+    // Sound toggle sync
+    soundToggle.addEventListener("change", () => { syncUrl(); });
+	
+	// Negativ weiterlaufen erlauben
+	allowNegativeCheckbox.addEventListener("change", () => {
+	  allowNegative = allowNegativeCheckbox.checked;
+	  syncUrl();
+	});
+
+    // Minutes changes only when not running
+    minutesInput.addEventListener("input", () => {
+      if (running) return;
+      setRemainingFromMinutes();
+      syncUrl();
+    });
+
+    // Presets 5/10/15
+    presetBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (running) return;
+        const m = parseInt(btn.dataset.min, 10);
+        setRemainingFromMinutes(m);
+        syncUrl();
+      });
+    });
+
+    // Keyboard shortcuts
+    window.addEventListener("keydown", (e) => {
+      const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
+      const isTyping = tag === "input" || tag === "select" || tag === "textarea";
+      if (isTyping && e.code !== "Escape") return;
+
+      if (e.code === "Space"){
+        e.preventDefault();
+        running ? stop() : start();
+      }
+      if (e.key.toLowerCase() === "r"){
+        reset();
+      }
+      if (e.key.toLowerCase() === "f"){
+        toggleFullscreen();
+      }
+      if (e.key === "Escape"){
+        settingsWrap.setAttribute("data-open", "false");
+        toggleSettingsBtn.textContent = "Einstellungen";
+        toggleSettingsBtn.setAttribute("aria-expanded", "false");
+        syncUrl();
+      }  	  
+	  // --- Timer-Sichtbarkeit (Unsichtbar-Toggle): B ---
+	  if (e.key.toLowerCase() === "b") {
+		e.preventDefault();
+		toggleTimerVisibility();
+		return;
+	  }
+
+	  // Plus: entweder "+" auf normaler Tastatur oder Numpad "+"
+	  const isPlus =
+		e.key === "+" ||                 // DE-Layout: Shift + "=" -> "+"
+		e.code === "NumpadAdd";          // Numpad "+"
+
+	  // Minus: entweder "-" auf normaler Tastatur oder Numpad "-"
+	  const isMinus =
+		e.key === "-" ||                 // DE-Layout: direkt "-"
+		e.code === "NumpadSubtract";     // Numpad "-"
+
+	  if (isPlus) {
+		// Standardverhalten unterbinden (z.B. Browser-Zoom, je nach Kontext)
+		e.preventDefault();
+		timerScale += TIMER_SCALE_STEP;
+		applyTimerScale();
+		return;
+	  }
+
+	  if (isMinus) {
+		e.preventDefault();
+		timerScale -= TIMER_SCALE_STEP;
+		applyTimerScale();
+		return;
+	  }
+    });
+
+    // --- Init ---
+    applyFromUrl();
+    syncUrl();
+    syncFsButton();
+	applyTimerScale();
+	// Sicherstellen, dass das Visibility-Label zum Startzustand passt
+	updateVisibilityButtonLabel();
+  </script>
+</body>
+</html>
+
+
