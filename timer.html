@@ -116,6 +116,10 @@
        Springen, wenn z. B. eine "5" zu einer (schmaleren) "4" wird. */
     .timer .digit{ display: inline-block; width: 1ch; text-align: center; }
 
+    /* "Unsichtbar"-Modus: nur die Timer-Anzeige ausblenden, der Platz bleibt
+       erhalten. Bedienelemente, Status und Einstellungen bleiben sichtbar. */
+    body.timer-hidden .timer{ visibility: hidden; }
+
     .sub{
       text-align: center;
       color: var(--muted);
@@ -317,12 +321,15 @@
           </div>
 
           <div class="field">
-            <label for="roundToggle">Runden auf ganze Minuten</label>
-            <select id="roundToggle">
-              <option value="off" selected>Aus</option>
-              <option value="ceil">An (auf ganze Minuten aufrunden)</option>
+            <label for="blinkCountSelect">Visuelles Signal vor 0:00</label>
+            <select id="blinkCountSelect">
+              <option value="0">Aus</option>
+              <option value="1">1× (letzte Sekunde)</option>
+              <option value="2">2× (letzte 2 Sek.)</option>
+              <option value="3" selected>3× (letzte 3 Sek.)</option>
+              <option value="5">5× (letzte 5 Sek.)</option>
             </select>
-            <div class="hint">Wirkt beim Pausieren und vor dem (Weiter-)Start.</div>
+            <div class="hint">Kurzes Aufblitzen in den letzten Sekunden vor 0:00.</div>
           </div>
 
           <div class="field">
@@ -371,7 +378,7 @@
           <div class="field" style="grid-column: 1 / -1;">
             <!--<label>URL-Parameter</label>
             <div class="hint">
-              min=5 · size=small|medium|large · lz=0|1 · round=off|ceil · sound=0|1 · fg=%23fff... · bg=%23000... · font=system|segoe|inter|arial|georgia|courier · settings=0|1 · autostart=0|1
+              min=5 · size=small|medium|large · lz=0|1 · sound=0|1 · blink=0|1|2|3|5 · neg=0|1 · fg=%23fff... · bg=%23000... · font=system|segoe|inter|arial|georgia|courier · settings=0|1 · autostart=0|1
             </div>-->
           </div>
         </div>
@@ -395,11 +402,11 @@
     const minutesInput        = document.getElementById("minutesInput");
     const sizePreset          = document.getElementById("sizePreset");
     const leadingZeroToggle   = document.getElementById("leadingZeroToggle");
-    const roundToggle         = document.getElementById("roundToggle");
     const fontSelect          = document.getElementById("fontSelect");
     const textColorInput      = document.getElementById("textColorInput");
     const bgColorInput        = document.getElementById("bgColorInput");
     const soundToggle         = document.getElementById("soundToggle");
+    const blinkCountSelect    = document.getElementById("blinkCountSelect");
 
     const settingsWrap = document.getElementById("settingsWrap");
     const toggleSettingsBtn = document.getElementById("toggleSettingsBtn");
@@ -437,8 +444,6 @@
 	let allowNegative = false;
 	// Merkt sich, ob der Timer „unsichtbar“ geschaltet ist
 	let timerHidden = false;
-	// Merkt sich die zuletzt sichtbare Schriftfarbe, um beim Re-Toggle wiederherstellen zu können
-	let lastVisibleTextColor = "#ffffff"; // wird gleich beim Init überschrieben
 
     // --- Helpers ---
     function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
@@ -541,43 +546,13 @@
       }
     }
 
-	// Schaltet den Timer zwischen sichtbar/unsichtbar um
+	// Schaltet NUR die Timer-Anzeige zwischen sichtbar/unsichtbar um.
+	// Bedienelemente, Status und Einstellungen bleiben sichtbar (CSS-Klasse).
 	function toggleTimerVisibility() {
 	  try {
-		// Aktuelle Farben aus den Inputs lesen
-		const currentTextColor = textColorInput.value;
-		const currentBgColor = bgColorInput.value;
-
-		if (!timerHidden) {
-		  // Übergang: sichtbar -> unsichtbar
-		  // Merke dir die derzeit sichtbare Schriftfarbe, um sie später wiederherzustellen
-		  lastVisibleTextColor = currentTextColor;
-
-		  // Schriftfarbe auf Hintergrundfarbe setzen -> Timer wird "unsichtbar"
-		  textColorInput.value = currentBgColor;
-		  document.documentElement.style.setProperty("--fg", currentBgColor);
-
-		  timerHidden = true;
-		} else {
-		  // Übergang: unsichtbar -> sichtbar
-		  // Falls aus irgendeinem Grund kein Wert gemerkt wurde, setze einen Fallback
-		  const restoreColor = lastVisibleTextColor || "#ffffff";
-
-		  textColorInput.value = restoreColor;
-		  document.documentElement.style.setProperty("--fg", restoreColor);
-
-		  timerHidden = false;
-		}
-
-		// Hintergrund/Contrast bleiben über applyTheme konsistent
-		document.documentElement.style.setProperty("--bg", currentBgColor);
-		document.documentElement.style.setProperty(
-		  "--bg-contrast",
-		  computeContrastColor(currentBgColor)
-		);
-
+		timerHidden = !timerHidden;
+		document.body.classList.toggle("timer-hidden", timerHidden);
 		updateVisibilityButtonLabel();
-		syncUrl(); // URL-Parameter (fg/bg) aktuell halten
 	  } catch (e) {
 		console.error("Fehler beim Umschalten der Timer-Sichtbarkeit:", e);
 	  }
@@ -591,11 +566,6 @@
 	  document.documentElement.style.setProperty("--fg", fg);
 	  document.documentElement.style.setProperty("--bg", bg);
 	  document.documentElement.style.setProperty("--bg-contrast", computeContrastColor(bg));
-
-	  // Wenn der Timer sichtbar ist, aktualisieren wir den "Last Visible"-Wert
-	  if (!timerHidden) {
-		lastVisibleTextColor = fg;
-	  }
 	}
 
 	// Wendet den aktuellen Skalierungsfaktor auf die Timer-Anzeige an
@@ -629,22 +599,6 @@
       setStatus("Bereit");
     }
 
-    function roundToWholeMinuteCeil(ms){
-      const minute = 60 * 1000;
-      if (ms <= 0) return 0;
-      return Math.ceil(ms / minute) * minute;
-    }
-
-	function maybeRoundRemaining(){
-	  if (roundToggle.value === "ceil"){
-		// Wenn negative Zeiten erlaubt sind und wir bei <= 0 ms sind,
-		// keine Rundung auf ganze Minuten mehr durchführen, um die Überziehung sichtbar zu lassen.
-		if (allowNegative && remainingMs <= 0) {
-		  return;
-		}
-		remainingMs = roundToWholeMinuteCeil(remainingMs);
-	  }
-	}
 
     function beep(){
       if (soundToggle.value !== "on") return;
@@ -703,15 +657,17 @@
         leadingZeroToggle.value = (String(p.get('lz')) === '1') ? 'on' : 'off';
       }
 
-      // rounding
-      if (p.has('round')) {
-        const r = String(p.get('round') || '').toLowerCase();
-        if (['off','ceil'].includes(r)) roundToggle.value = r;
-      }
-
       // sound
       if (p.has('sound')) {
         soundToggle.value = (String(p.get('sound')) === '1') ? 'on' : 'off';
+      }
+
+      // visuelles Signal: Anzahl Blinks vor 0:00 (blink=0|1|2|3|5)
+      if (p.has('blink')) {
+        const b = String(p.get('blink'));
+        if (Array.from(blinkCountSelect.options).some(o => o.value === b)) {
+          blinkCountSelect.value = b;
+        }
       }
   
 	  // negative Zeit erlauben (neg=0|1)
@@ -762,10 +718,7 @@
       applySizePreset();
       setRemainingFromMinutes();
       updateDisplay();
-	  
-	  // Nach Theme-Anwendung: initial letzten sichtbaren Text-Farbwert setzen
-	  lastVisibleTextColor = textColorInput.value;
-	  
+
 	  // Button-Label an den aktuellen Hidden-State anpassen
 	  updateVisibilityButtonLabel();
 
@@ -783,8 +736,8 @@
       p.set('min', String(clamp(parseInt(minutesInput.value || '5', 10), 1, 999)));
       p.set('size', sizePreset.value);
       p.set('lz', leadingZeroToggle.value === 'on' ? '1' : '0');
-      p.set('round', roundToggle.value);
       p.set('sound', soundToggle.value === 'on' ? '1' : '0');
+	  p.set('blink', blinkCountSelect.value);
 	  p.set('neg', allowNegative ? '1' : '0');
       // colors (encode #)
       p.set('fg', encodeURIComponent(textColorInput.value));
@@ -839,9 +792,11 @@
 	  // Anzeige aktualisieren (inkl. evtl. Minuszeichen)
 	  updateDisplay();
 
-	  // Letzte 3 Sekunden: bei 3, 2, 1 einmal blinken lassen (nur im positiven Bereich sinnvoll)
+	  // Visuelles Signal: in den letzten N Sekunden je einmal blinken (N aus
+	  // dem Dropdown). 0 = aus. Nur im positiven Bereich sinnvoll.
+	  const blinkCount = parseInt(blinkCountSelect.value, 10) || 0;
 	  const secondsLeftPositive = Math.ceil(Math.max(0, delta) / 1000); // nur aus positiver Sicht
-	  if (secondsLeftPositive > 0 && secondsLeftPositive <= 3 && secondsLeftPositive !== lastBlinkSecond) {
+	  if (blinkCount > 0 && secondsLeftPositive > 0 && secondsLeftPositive <= blinkCount && secondsLeftPositive !== lastBlinkSecond) {
 		triggerAlarmBlink();
 		lastBlinkSecond = secondsLeftPositive;
 	  }
@@ -861,7 +816,6 @@
 		  setStatus("Fertig");
 		  subText.textContent = "Countdown beendet.";
 		  beep();
-		  triggerAlarmBlink();
 		}
 		return;
 	  }
@@ -872,7 +826,6 @@
 		finished = true;
 		// Status/Subtext bleiben wie von dir gewünscht unverändert ("Läuft", "Timer läuft…")
 		beep();
-		triggerAlarmBlink();
 		// KEIN return -> wir laufen weiter ins Negative
 	  }
 
@@ -888,7 +841,6 @@
         setRemainingFromMinutes();
       }
 
-      maybeRoundRemaining();
       updateDisplay();
 
       running = true;
@@ -925,7 +877,6 @@
 	  remainingMs = allowNegative ? delta : Math.max(0, delta);
 
 	  endAt = null;
-	  maybeRoundRemaining();
 
 	  startBtn.disabled = false;
 	  stopBtn.disabled = true;
@@ -1025,11 +976,11 @@
     // Leading zero affects formatting instantly
     leadingZeroToggle.addEventListener("change", () => { updateDisplay(); syncUrl(); });
 
-    // Round toggle sync
-    roundToggle.addEventListener("change", () => { syncUrl(); });
-
     // Sound toggle sync
     soundToggle.addEventListener("change", () => { syncUrl(); });
+
+    // Visuelles Signal (Blink-Anzahl) sync
+    blinkCountSelect.addEventListener("change", () => { syncUrl(); });
 	
 	// Negativ weiterlaufen erlauben
 	allowNegativeCheckbox.addEventListener("change", () => {

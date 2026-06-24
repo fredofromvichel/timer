@@ -20,8 +20,8 @@ This project provides a highly customizable countdown timer built entirely with 
 - `min` – start minutes
 - `size` – small / medium / large
 - `lz` – leading zero
-- `round` – rounding to whole minutes
 - `sound` – 0/1 for alarm
+- `blink` – number of visual blinks before 0:00 (0/1/2/3/5)
 - `fg` / `bg` – colors
 - `font` – font family alias
 - `settings` – 0/1 to show settings panel
@@ -94,8 +94,8 @@ Dieses Projekt ist ein vollständig clientseitiger, hochgradig konfigurierbarer 
 - `min` – Startminuten
 - `size` – small / medium / large
 - `lz` – führende Null
-- `round` – Rundung auf ganze Minuten
 - `sound` – 0/1 für Alarm
+- `blink` – Anzahl visueller Blinks vor 0:00 (0/1/2/3/5)
 - `fg` / `bg` – Farben
 - `font` – Schriftart
 - `settings` – 0/1 für Panelstatus
