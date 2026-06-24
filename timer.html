@@ -104,8 +104,11 @@
       padding: 10px 0 0;
       user-select: none;
     }
-    .timer .t-min{ text-align: right; }
-    .timer .t-sec{ text-align: left; }
+    /* nowrap: durch die Einzel-Ziffern-Zellen (inline-block) gibt es
+       Umbruchpunkte zwischen den Ziffern – ohne das hier bricht z. B. die
+       zweite Sekundenziffer bei grosser Schrift in die naechste Zeile. */
+    .timer .t-min{ text-align: right; white-space: nowrap; }
+    .timer .t-sec{ text-align: left; white-space: nowrap; }
     .timer .t-sep{ text-align: center; padding: 0 0.04em; }
     /* Jede Ziffer bekommt eine feste Zelle (Breite der "0"), Ziffer zentriert.
        Dadurch sind alle Ziffern garantiert gleich breit – unabhaengig davon,
