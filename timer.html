@@ -107,6 +107,11 @@
     .timer .t-min{ text-align: right; }
     .timer .t-sec{ text-align: left; }
     .timer .t-sep{ text-align: center; padding: 0 0.04em; }
+    /* Jede Ziffer bekommt eine feste Zelle (Breite der "0"), Ziffer zentriert.
+       Dadurch sind alle Ziffern garantiert gleich breit – unabhaengig davon,
+       ob die gewaehlte Schrift tabular-nums unterstuetzt. Verhindert das
+       Springen, wenn z. B. eine "5" zu einer (schmaleren) "4" wird. */
+    .timer .digit{ display: inline-block; width: 1ch; text-align: center; }
 
     .sub{
       text-align: center;
@@ -476,10 +481,29 @@
       statusText.textContent = text;
     }
 
+    // Merker, damit wir die Anzeige nur bei tatsaechlicher Aenderung neu
+    // aufbauen (tick() laeuft via rAF ~60x/s, die Zeit aendert sich aber
+    // nur ~1x/s).
+    let lastMinStr = null, lastSecStr = null;
+
+    // Rendert einen String in Einzel-Zellen: Ziffern als feste .digit-Zelle,
+    // alles andere (Minuszeichen) in natuerlicher Breite.
+    function renderCells(target, str){
+      let html = "";
+      for (let i = 0; i < str.length; i++){
+        const ch = str[i];
+        const isDigit = ch >= "0" && ch <= "9";
+        html += isDigit
+          ? `<span class="digit">${ch}</span>`
+          : `<span class="nondigit">${ch}</span>`;
+      }
+      target.innerHTML = html;
+    }
+
     function updateDisplay(){
       const p = formatTimeParts(remainingMs);
-      timerMin.textContent = p.min;
-      timerSec.textContent = p.sec;
+      if (p.min !== lastMinStr){ renderCells(timerMin, p.min); lastMinStr = p.min; }
+      if (p.sec !== lastSecStr){ renderCells(timerSec, p.sec); lastSecStr = p.sec; }
     }
 
     function hexToRgb(hex){
