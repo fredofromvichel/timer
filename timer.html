@@ -228,6 +228,14 @@
       outline: none;
     }
 
+    /* Aufgeklappte Auswahlliste: das native Popup ist je nach OS weiss.
+       Daher Optionen solide einfaerben, damit sie nicht (hell auf hell)
+       unsichtbar werden. */
+    select option{
+      background: var(--bg);
+      color: var(--ui);
+    }
+
     input[type="color"]{
       padding: 6px;
       height: 42px;
@@ -726,9 +734,9 @@
       p.set('lz', leadingZeroToggle.value === 'on' ? '1' : '0');
 	  p.set('blink', blinkCountSelect.value);
 	  p.set('neg', allowNegative ? '1' : '0');
-      // colors (encode #)
-      p.set('fg', encodeURIComponent(textColorInput.value));
-      p.set('bg', encodeURIComponent(bgColorInput.value));
+      // colors (URLSearchParams kodiert '#' bereits selbst -> nicht doppelt kodieren)
+      p.set('fg', textColorInput.value);
+      p.set('bg', bgColorInput.value);
 
       // font as alias if possible for nicer URLs
       const fontAliasMap = new Map([
@@ -740,7 +748,7 @@
         ["'Courier New', monospace", 'courier'],
       ]);
       const alias = fontAliasMap.get(fontSelect.value) || fontSelect.value;
-      p.set('font', encodeURIComponent(alias));
+      p.set('font', alias);
 
       const open = settingsWrap.getAttribute('data-open') === 'true';
       p.set('settings', open ? '1' : '0');
