@@ -329,7 +329,7 @@
               <option value="3" selected>3× (letzte 3 Sek.)</option>
               <option value="5">5× (letzte 5 Sek.)</option>
             </select>
-            <div class="hint">Kurzes Aufblitzen in den letzten Sekunden vor 0:00.</div>
+            <div class="hint">Kurzes Aufblitzen in den letzten Sekunden vor 0:00. Steuert auch den Ton bei 0:00 – bei „Aus“ gibt es weder Blitz noch Ton.</div>
           </div>
 
           <div class="field">
@@ -354,13 +354,6 @@
             <input id="bgColorInput" type="color" value="#111827" />
           </div>
 
-          <div class="field">
-            <label for="soundToggle">Signal bei 0:00</label>
-            <select id="soundToggle">
-              <option value="on" selected>An</option>
-              <option value="off">Aus</option>
-            </select>
-          </div>
 		  <div class="field">
 		    <label>
 		  	<input id="allowNegativeCheckbox" type="checkbox" />
@@ -378,7 +371,7 @@
           <div class="field" style="grid-column: 1 / -1;">
             <!--<label>URL-Parameter</label>
             <div class="hint">
-              min=5 · size=small|medium|large · lz=0|1 · sound=0|1 · blink=0|1|2|3|5 · neg=0|1 · fg=%23fff... · bg=%23000... · font=system|segoe|inter|arial|georgia|courier · settings=0|1 · autostart=0|1
+              min=5 · size=small|medium|large · lz=0|1 · blink=0|1|2|3|5 · neg=0|1 · fg=%23fff... · bg=%23000... · font=system|segoe|inter|arial|georgia|courier · settings=0|1 · autostart=0|1
             </div>-->
           </div>
         </div>
@@ -405,7 +398,6 @@
     const fontSelect          = document.getElementById("fontSelect");
     const textColorInput      = document.getElementById("textColorInput");
     const bgColorInput        = document.getElementById("bgColorInput");
-    const soundToggle         = document.getElementById("soundToggle");
     const blinkCountSelect    = document.getElementById("blinkCountSelect");
 
     const settingsWrap = document.getElementById("settingsWrap");
@@ -601,7 +593,8 @@
 
 
     function beep(){
-      if (soundToggle.value !== "on") return;
+      // Ton haengt am selben Signal-Dropdown: bei "Aus" (0) kein Ton.
+      if ((parseInt(blinkCountSelect.value, 10) || 0) === 0) return;
       try{
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const o = ctx.createOscillator();
@@ -657,12 +650,7 @@
         leadingZeroToggle.value = (String(p.get('lz')) === '1') ? 'on' : 'off';
       }
 
-      // sound
-      if (p.has('sound')) {
-        soundToggle.value = (String(p.get('sound')) === '1') ? 'on' : 'off';
-      }
-
-      // visuelles Signal: Anzahl Blinks vor 0:00 (blink=0|1|2|3|5)
+      // visuelles Signal: Anzahl Blinks vor 0:00 (blink=0|1|2|3|5); steuert auch den Ton
       if (p.has('blink')) {
         const b = String(p.get('blink'));
         if (Array.from(blinkCountSelect.options).some(o => o.value === b)) {
@@ -736,7 +724,6 @@
       p.set('min', String(clamp(parseInt(minutesInput.value || '5', 10), 1, 999)));
       p.set('size', sizePreset.value);
       p.set('lz', leadingZeroToggle.value === 'on' ? '1' : '0');
-      p.set('sound', soundToggle.value === 'on' ? '1' : '0');
 	  p.set('blink', blinkCountSelect.value);
 	  p.set('neg', allowNegative ? '1' : '0');
       // colors (encode #)
@@ -975,9 +962,6 @@
 
     // Leading zero affects formatting instantly
     leadingZeroToggle.addEventListener("change", () => { updateDisplay(); syncUrl(); });
-
-    // Sound toggle sync
-    soundToggle.addEventListener("change", () => { syncUrl(); });
 
     // Visuelles Signal (Blink-Anzahl) sync
     blinkCountSelect.addEventListener("change", () => { syncUrl(); });
