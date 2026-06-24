@@ -7,10 +7,12 @@ This project provides a highly customizable countdown timer built entirely with 
 
 ## ✨ Features
 - Start / Stop / Reset controls
-- Acoustic alarm and visual blink effect at 0:00
+- Stable, non-jumping time display (fixed-width digits, centered colon)
+- Configurable visual + audio signal before 0:00 (off / 1 / 2 / 3 / 5×)
 - Optional continuation into negative time (e.g., -0:12)
 - Size presets and manual scaling via keyboard (+ / -)
-- Timer visibility toggle (key: B)
+- Timer-only visibility toggle — hides the countdown while controls stay visible (key: B)
+- UI that auto-contrasts to the chosen background color (readable on light and dark)
 - Fullscreen mode (key: F)
 - UI dimming while the timer is running
 - Live-updating URL parameters for sharing configurations
@@ -47,8 +49,9 @@ This project provides a highly customizable countdown timer built entirely with 
 ### Core Functions
 - `start()`, `stop()`, `reset()`
 - `tick()` — frame-based loop via `requestAnimationFrame`
-- `formatTime()` — outputs mm:ss, including negative time
-- `applyTheme()`, `applySizePreset()`
+- `formatTimeParts()` / `formatTime()` — split mm / ss for a stable, fixed-width display, including negative time
+- `applyTheme()` — applies colors/font and derives the auto-contrasting UI chrome from the background
+- `applySizePreset()`
 - `syncUrl()`, `applyFromUrl()` for shareable URLs
 
 ## 📄 License
@@ -80,10 +83,12 @@ Dieses Projekt ist ein vollständig clientseitiger, hochgradig konfigurierbarer 
 
 ## ✨ Features
 - Start / Stop / Reset
-- Akustischer Alarm und visuelles Blinksignal
+- Ruhige, springfreie Zeitanzeige (gleich breite Ziffern, zentrierter Doppelpunkt)
+- Konfigurierbares visuelles + akustisches Signal vor 0:00 (Aus / 1 / 2 / 3 / 5×)
 - Optionales Weiterlaufen in die negative Zeit (z. B. -0:12)
 - Schriftgrößen-Presets und frei skalierbare Anzeige (+ / -)
-- Unsichtbarkeitsmodus des Timers (Taste: B)
+- Unsichtbarkeitsmodus: blendet nur den Timer aus, Bedienelemente bleiben sichtbar (Taste: B)
+- Bedienoberfläche, die sich automatisch an die Hintergrundfarbe anpasst (hell wie dunkel lesbar)
 - Vollbildmodus (Taste: F)
 - UI-Dimming während der Laufzeit
 - Dynamische URL‑Parameter zur Weitergabe der Einstellungen
