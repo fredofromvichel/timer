@@ -84,11 +84,6 @@
       color: var(--muted);
     }
 
-    .status{
-      font-size: 13px;
-      color: var(--muted);
-    }
-
     .timer{
       /* 3-Spalten-Grid: Minuten | Doppelpunkt | Sekunden.
          Der Doppelpunkt bleibt dadurch immer exakt zentriert, die Sekunden
@@ -140,7 +135,7 @@
 	body.running .sub,
 	body.running .controls,
 	body.running .settingsWrap {
-	  opacity: 0.3;
+	  opacity: 0.2;
 	  transition: opacity 150ms ease;
 	}
 
@@ -266,7 +261,6 @@
     <div class="topRow">
       <div class="title"></div>
       <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-        <div class="status" id="statusText">Bereit</div>
         <button id="fsBtn" title="Vollbild umschalten (F)">Vollbild</button>
       </div>
     </div>
@@ -308,7 +302,6 @@
               <option value="medium" selected>Mittel</option>
               <option value="large">Groß (fast fullscreen)</option>
             </select>
-            <div class="hint">„Groß“ nutzt viewport-basierte Größe und füllt fast den ganzen Screen.</div>
           </div>
 
           <div class="field">
@@ -317,7 +310,6 @@
               <option value="off" selected>Aus (z. B. 5:07)</option>
               <option value="on">An (z. B. 05:07)</option>
             </select>
-            <div class="hint">Sekunden bleiben immer zweistellig.</div>
           </div>
 
           <div class="field">
@@ -329,7 +321,7 @@
               <option value="3" selected>3× (letzte 3 Sek.)</option>
               <option value="5">5× (letzte 5 Sek.)</option>
             </select>
-            <div class="hint">Kurzes Aufblitzen in den letzten Sekunden vor 0:00. Steuert auch den Ton bei 0:00 – bei „Aus“ gibt es weder Blitz noch Ton.</div>
+            <div class="hint">Bei „Aus“ gibt es weder Blitz noch Ton.</div>
           </div>
 
           <div class="field">
@@ -359,9 +351,6 @@
 		  	<input id="allowNegativeCheckbox" type="checkbox" />
 		  	Timer nach 0:00 weiterlaufen lassen
 		    </label>
-		    <div class="hint">
-		  	Wenn aktiviert, läuft der Timer unter 0:00 weiter (z. B. -0:12).
-		    </div>
 		  </div>
           <div class="field">
             <label>Shortcuts</label>
@@ -385,7 +374,6 @@
     const timerMin = document.getElementById("timerMin");
     const timerSec = document.getElementById("timerSec");
     const subText = document.getElementById("subText");
-    const statusText = document.getElementById("statusText");
 
     const startBtn = document.getElementById("startBtn");
     const stopBtn  = document.getElementById("stopBtn");
@@ -476,10 +464,6 @@
 	  const p = formatTimeParts(ms);
 	  return `${p.min}:${p.sec}`;
 	}
-
-    function setStatus(text){
-      statusText.textContent = text;
-    }
 
     // Merker, damit wir die Anzeige nur bei tatsaechlicher Aenderung neu
     // aufbauen (tick() laeuft via rAF ~60x/s, die Zeit aendert sich aber
@@ -588,7 +572,6 @@
       lastBlinkSecond = null;
       updateDisplay();
       subText.textContent = "Stelle Minuten ein, dann Start.";
-      setStatus("Bereit");
     }
 
 
@@ -754,8 +737,9 @@
       const url = location.href;
       try{
         await navigator.clipboard.writeText(url);
-        setStatus('Link kopiert');
-        setTimeout(() => setStatus(running ? 'Läuft' : 'Bereit'), 900);
+        const prev = subText.textContent;
+        subText.textContent = 'Link kopiert';
+        setTimeout(() => { subText.textContent = prev; }, 900);
       }catch(e){
         prompt('Link kopieren:', url);
       }
@@ -800,7 +784,6 @@
 
 		if (!finished){
 		  finished = true;
-		  setStatus("Fertig");
 		  subText.textContent = "Countdown beendet.";
 		  beep();
 		}
@@ -837,7 +820,6 @@
       startBtn.disabled = true;
       stopBtn.disabled = false;
 
-      setStatus("Läuft");
       subText.textContent = "Timer läuft…";
 
       lastBlinkSecond = null;
@@ -868,7 +850,6 @@
 	  startBtn.disabled = false;
 	  stopBtn.disabled = true;
 
-	  setStatus("Pausiert");
 	  subText.textContent = "Timer pausiert.";
 
 	  if (rafId) cancelAnimationFrame(rafId);
@@ -892,8 +873,7 @@
 
       lastBlinkSecond = null;
       setRemainingFromMinutes();
-      setStatus("Bereit");
-	 
+
 	  // >>> NEU: Dimm-Zustand sicherheitshalber aufheben <<<
 	  try {
 		document.body.classList.remove("running");
