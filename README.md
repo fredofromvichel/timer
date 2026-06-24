@@ -1,6 +1,6 @@
 # ⏱️ Countdown Timer – Extended Version
 
-A modular, presentation‑ready and fully client‑side countdown timer.
+A modular, presentation‑ready and fully client‑side countdown timer. Created with AI support.
 
 ## 🚀 Overview
 This project provides a highly customizable countdown timer built entirely with vanilla HTML, CSS, and JavaScript. It is optimized for presentations, workshops, meetings, and live events.
@@ -66,7 +66,6 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, subject to the following conditions:
 
 - This copyright notice must be included in all copies.
-- The name of the original author: "Frederic Krone" must be retained.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -75,7 +74,7 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 
 # ⏱️ Countdown Timer – Extended Version
 
-Modularer, erweiterbarer und präsentationstauglicher Web‑Timer.
+Modularer, erweiterbarer und präsentationstauglicher Web‑Timer. Mithilfe von KI erstellt.
 
 ## 🚀 Überblick
 Dieses Projekt ist ein vollständig clientseitiger, hochgradig konfigurierbarer Countdown‑Timer für Präsentationen, Workshops und Live‑Events.
@@ -115,7 +114,6 @@ zu verwenden, zu kopieren, zu verändern und weiterzugeben – auch
 kommerziell –, unter der Bedingung, dass folgende Hinweise enthalten bleiben:
 
 - Diese Copyright-Notiz
-- Der Name des ursprünglichen Autors: "Frederic Krone"
 
 Das Skript wird ohne Gewährleistung bereitgestellt – ohne Anspruch
 auf Funktion, Eignung oder Fehlerfreiheit.
