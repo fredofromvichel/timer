@@ -90,7 +90,13 @@
     }
 
     .timer{
-      text-align: center;
+      /* 3-Spalten-Grid: Minuten | Doppelpunkt | Sekunden.
+         Der Doppelpunkt bleibt dadurch immer exakt zentriert, die Sekunden
+         stehen fix – nur die Minuten wachsen nach links. So springt die
+         Anzeige beim Stellenwechsel (z. B. 10:00 -> 9:59) nicht mehr. */
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: baseline;
       font-size: var(--size);
       line-height: 1.02;
       font-weight: 800;
@@ -98,6 +104,9 @@
       padding: 10px 0 0;
       user-select: none;
     }
+    .timer .t-min{ text-align: right; }
+    .timer .t-sec{ text-align: left; }
+    .timer .t-sep{ text-align: center; padding: 0 0.04em; }
 
     .sub{
       text-align: center;
@@ -250,7 +259,7 @@
       </div>
     </div>
 
-    <div class="timer" id="timerDisplay" aria-live="polite">5:00</div>
+    <div class="timer" id="timerDisplay" aria-live="polite"><span class="t-min" id="timerMin">5</span><span class="t-sep">:</span><span class="t-sec" id="timerSec">00</span></div>
     <div class="sub" id="subText"></div>
 
     <div class="controls">
@@ -365,6 +374,8 @@
   <script>
     // --- DOM ---
     const timerDisplay = document.getElementById("timerDisplay");
+    const timerMin = document.getElementById("timerMin");
+    const timerSec = document.getElementById("timerSec");
     const subText = document.getElementById("subText");
     const statusText = document.getElementById("statusText");
 
@@ -432,8 +443,9 @@
       return /^#[0-9a-fA-F]{6}$/.test(v) ? v : null;
     }
 
-	// Formatiert die Restzeit, bei Bedarf mit Minuszeichen (wenn negativ erlaubt)
-	function formatTime(ms){
+	// Zerlegt die Restzeit in Minuten-/Sekunden-Teil (für die getrennten
+	// Anzeige-Spans), bei Bedarf mit Minuszeichen (wenn negativ erlaubt).
+	function formatTimeParts(ms){
 	  let isNegative = false;
 
 	  // Wenn negative Zeiten erlaubt sind und ms < 0, merken wir uns das
@@ -451,8 +463,13 @@
 		? String(m).padStart(2,"0")
 		: String(m);
 
-	  const timeStr = `${minStr}:${secStr}`;
-	  return isNegative ? `-${timeStr}` : timeStr;
+	  return { min: (isNegative ? "-" : "") + minStr, sec: secStr };
+	}
+
+	// Formatiert die Restzeit als zusammenhängenden String (mm:ss)
+	function formatTime(ms){
+	  const p = formatTimeParts(ms);
+	  return `${p.min}:${p.sec}`;
 	}
 
     function setStatus(text){
@@ -460,7 +477,9 @@
     }
 
     function updateDisplay(){
-      timerDisplay.textContent = formatTime(remainingMs);
+      const p = formatTimeParts(remainingMs);
+      timerMin.textContent = p.min;
+      timerSec.textContent = p.sec;
     }
 
     function hexToRgb(hex){
