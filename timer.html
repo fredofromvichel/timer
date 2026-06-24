@@ -29,9 +29,14 @@
       --font: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       --size: 96px; /* wird via Preset gesetzt */
 
+      /* UI-Chrome-Farbe: kontrastiert automatisch zum Hintergrund
+         (schwarz auf hell, weiss auf dunkel) – unabhaengig von der frei
+         waehlbaren Timer-Schriftfarbe (--fg). Wird in applyTheme gesetzt. */
+      --ui: #ffffff;
       --muted: rgba(255,255,255,0.75);
       --btn-bg: rgba(255,255,255,0.10);
       --btn-bg-hover: rgba(255,255,255,0.16);
+      --input-bg: rgba(255,255,255,0.10);
 
       /* Alarm-Kontrast */
       --bg-contrast: #ffffff;
@@ -147,7 +152,7 @@
       appearance: none;
       border: none; /* keine Rahmen */
       background: var(--btn-bg);
-      color: var(--fg);
+      color: var(--ui);
       border-radius: 999px;
       padding: 10px 14px;
       font-weight: 650;
@@ -218,8 +223,8 @@
       padding: 10px 10px;
       border-radius: 12px;
       border: none; /* keine Rahmen */
-      background: rgba(0,0,0,0.18);
-      color: var(--fg);
+      background: var(--input-bg);
+      color: var(--ui);
       outline: none;
     }
 
@@ -537,11 +542,23 @@
 	function applyTheme(){
 	  const fg = textColorInput.value;
 	  const bg = bgColorInput.value;
+	  const root = document.documentElement;
 
-	  document.documentElement.style.setProperty("--font", fontSelect.value);
-	  document.documentElement.style.setProperty("--fg", fg);
-	  document.documentElement.style.setProperty("--bg", bg);
-	  document.documentElement.style.setProperty("--bg-contrast", computeContrastColor(bg));
+	  root.style.setProperty("--font", fontSelect.value);
+	  root.style.setProperty("--fg", fg);
+	  root.style.setProperty("--bg", bg);
+
+	  // UI-Chrome (Labels, Hinweise, Buttons, Eingabefelder) automatisch auf
+	  // den Hintergrund abstimmen, damit es bei hellem wie dunklem Hintergrund
+	  // lesbar bleibt – unabhaengig von der Timer-Schriftfarbe (--fg).
+	  const contrast = computeContrastColor(bg);        // "#000000" oder "#ffffff"
+	  const { r, g, b } = hexToRgb(contrast);
+	  root.style.setProperty("--bg-contrast", contrast);
+	  root.style.setProperty("--ui", contrast);
+	  root.style.setProperty("--muted", `rgba(${r},${g},${b},0.75)`);
+	  root.style.setProperty("--btn-bg", `rgba(${r},${g},${b},0.10)`);
+	  root.style.setProperty("--btn-bg-hover", `rgba(${r},${g},${b},0.16)`);
+	  root.style.setProperty("--input-bg", `rgba(${r},${g},${b},0.10)`);
 	}
 
 	// Wendet den aktuellen Skalierungsfaktor auf die Timer-Anzeige an
